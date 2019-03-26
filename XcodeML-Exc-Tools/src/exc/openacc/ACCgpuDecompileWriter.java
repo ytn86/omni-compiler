@@ -181,11 +181,11 @@ class ACCgpuDecompileWriter extends PrintWriter {
 		case COMPOUND_STATEMENT:
 			println();
 			/* (COMPOUND_STATEMENT id-list decl statement-list) */
-			println("{");
+			//println("{");
 			printIdentList(v.getArg(0));
 			printDeclList(v.getArg(1),v.getArg(0));
 			print(v.getArg(2));
-			println(); print("}");
+			//println(); print("}");
 			break;
 
 		case IF_STATEMENT: /* (IF_STATMENT cond then-part else-part) */
@@ -195,17 +195,19 @@ class ACCgpuDecompileWriter extends PrintWriter {
 			print(")");
 			printBody(v.getArg(1));
 			if(v.getArg(2) != null && (! v.getArg(2).isEmpty())){
-				print(" else ");
+				print("else");
 				printBody(v.getArg(2));
 			}
+			println();
 			break;
 
 		case WHILE_STATEMENT: /* (WHILE_STATEMENT cond body) */
 			println();
 			print("while(");
 			print(v.getArg(0));
-			print(")");
+			print(") {");
 			printBody(v.getArg(1));
+			println("}");
 			break;
 
 		case FOR_STATEMENT:  /* (FOR init cond iter body) */
@@ -216,15 +218,16 @@ class ACCgpuDecompileWriter extends PrintWriter {
 			print(v.getArg(1)); /* cond */
 			print(";");
 			print(v.getArg(2));  /* iter */
-			print(")");
+			print(") {");
 			printBody(v.getArg(3));  /* body */
+			println("}");
 			break;
 
 		case DO_STATEMENT: /* (DO_STATEMENT body cond) */
 			println();
-			print("do ");
+			println("do {");
 			printBody(v.getArg(0));
-			print(" while(");
+			print("} while(");
 			print(v.getArg(1));
 			print(");");
 			break;
@@ -251,8 +254,9 @@ class ACCgpuDecompileWriter extends PrintWriter {
 			println();
 			print("switch(");
 			print(v.getArg(0));
-			print(")");
+			print(") {");
 			printBody(v.getArg(1));
+			println("}");
 			break;
 		case CASE_LABEL:              /* (CASE_LABEL value) */
 			println();
