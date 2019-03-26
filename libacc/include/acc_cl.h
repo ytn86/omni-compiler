@@ -47,3 +47,8 @@
 #define _ACC_block_x_id get_global_id(0)
 #define _ACC_block_y_id get_global_id(1)
 #define _ACC_block_z_id get_global_id(2)
+
+#define _ACC_thread_x_id get_local_id(0)
+#define _ACC_thread_y_id get_local_id(1)
+#define _ACC_thread_z_id get_local_id(2)
+
