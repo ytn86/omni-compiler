@@ -44,6 +44,6 @@
 #endif
 
 
-#define _ACC_loop_block_x_id get_global_id(0)
-#define _ACC_loop_block_y_id get_global_id(1)
-#define _ACC_loop_block_z_id get_global_id(2)
+#define _ACC_block_x_id get_global_id(0)
+#define _ACC_block_y_id get_global_id(1)
+#define _ACC_block_z_id get_global_id(2)
