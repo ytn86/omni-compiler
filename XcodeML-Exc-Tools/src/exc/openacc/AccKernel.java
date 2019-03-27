@@ -261,6 +261,7 @@ public class AccKernel {
 		//make params
 		//add paramId from outerId
 		for (Ident id : outerIdList) {
+/*
 			if (ACC.device.getUseReadOnlyDataCache() && _readOnlyOuterIdSet.contains(id) && (id.Type().isArray() || id.Type().isPointer())) {
 				Xtype constParamType = makeConstRestrictVoidType();
 				Ident constParamId = Ident.Param("_ACC_cosnt_" + id.getName(), constParamType);
@@ -269,12 +270,13 @@ public class AccKernel {
 				Ident localId = Ident.Local(id.getName(), arrayPtrType);
 				Xobject initialize = Xcons.Set(localId.Ref(), Xcons.Cast(arrayPtrType, constParamId.Ref()));
 				kernelBuildInfo.addParamId(constParamId);
-
+				
 				kernelBuildInfo.addLocalId(localId);
 				kernelBuildInfo.addInitBlock(Bcons.Statement(initialize));
 			} else {
-				kernelBuildInfo.addParamId(makeParamId_new(id));
-			}
+*/
+			kernelBuildInfo.addParamId(makeParamId_new(id));
+//			}
 		}
 
 		//make mainBody
