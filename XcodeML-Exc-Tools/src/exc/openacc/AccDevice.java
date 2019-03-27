@@ -37,6 +37,8 @@ public enum AccDevice {
                 return getNvidiaDevice(52);
             case "Pascal":
                 return getNvidiaDevice(60);
+            case "Volta":
+                return getNvidiaDevice(70);
             default:
                 return AccDevice.valueOf(deviceName);
             }
