@@ -972,7 +972,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 				print("__shared__ ");
 				break;
 			case OpenCL:
-				print("__local ");
+				//print("__local ");
 				break;
 			}
 		}
