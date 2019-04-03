@@ -1140,7 +1140,6 @@ class ACCgpuDecompileWriter extends PrintWriter {
 		} else {
 			print(v);
 		}
-		println("");
 	}
 
 	private void printDeclList(Xobject v, Xobject id_list) {
