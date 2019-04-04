@@ -455,7 +455,7 @@ public class AccKernel {
 
 
 			// if there is no parallelism
-			if (!this._kernelInfo.hasClause(ACCpragma.GANG)) {
+			if (this._kernelInfo.getPragma() != ACCpragma.KERNELS_LOOP) {
 				return resultBlock;
 			}
 		   
@@ -479,7 +479,7 @@ public class AccKernel {
 		Xobject decls = body.getDecls();
 		Block varInitSection = null;
 		Set<ACCpragma> outerParallelisms = AccLoop.getOuterParallelism(body.getParent());
-		if (!outerParallelisms.contains(ACCpragma.VECTOR)) {
+		if (this._kernelInfo.getPragma() == ACCpragma.KERNELS_LOOP && !outerParallelisms.contains(ACCpragma.VECTOR)) {
 			if (ids != null) {
 				for (Xobject x : (XobjList) ids) {
 					Ident id = (Ident) x;
@@ -868,13 +868,13 @@ public class AccKernel {
 		resultBody.add(mainLoop);
 
 		ACCvar var = (info != null)? info.findACCvar(originalInductionVar.getName()) : null;
-		if(((var == null || !(var.isPrivate() || var.isFirstprivate())) && this._kernelInfo.hasClause(ACCpragma.GANG))) {
+		if(((var == null || !(var.isPrivate() || var.isFirstprivate())) && this._kernelInfo.getPragma() == ACCpragma.KERNELS_LOOP)) {
 			Block endIf = Bcons.IF(Xcons.binaryOp(Xcode.LOG_EQ_EXPR, _accThreadIndex, Xcons.IntConstant(0)),
 								   Bcons.Statement(Xcons.Set(originalInductionVar, inductionVarId.Ref())), null);
 			resultBody.add(endIf);
 		}
 
-		if (this._kernelInfo.hasClause(ACCpragma.GANG)) {
+		if (this._kernelInfo.getPragma() == ACCpragma.KERNELS_LOOP || this._kernelInfo.getPragma() == ACCpragma.KERNELS_LOOP) {
 			resultBody.add(_accSyncThreads);
 		}
 
