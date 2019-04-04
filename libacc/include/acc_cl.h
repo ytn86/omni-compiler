@@ -13,7 +13,7 @@
     do{*(niter) = ((cond) - (init) + ((step) > 0? -1 : 1)) / (step) + 1;}while(0)
 
 
-#define _ACC_init_iter_block_warp_x(gang_init, gang_cond, gang_step, totaliter)\
+#define _ACC_init_iter_block_x(gang_init, gang_cond, gang_step, totaliter)\
     do{ \
     int gang_size = _ACC_M_CEILi((totaliter), get_num_groups(0));	\
     *(gang_init) = (gang_size) * get_group_id(0);\
