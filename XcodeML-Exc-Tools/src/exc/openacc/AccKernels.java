@@ -208,6 +208,7 @@ class AccKernels extends AccData {
     switch (clauseKind){
     case IF:
     case ASYNC:
+    case DEVICE_TYPE:
       return true;
     default:
       return clauseKind.isDataClause();
