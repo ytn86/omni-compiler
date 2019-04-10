@@ -48,7 +48,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 				return;
 			}
 
-			if (!funcName.endsWith(AccKernel.ACC_OpenCL_DEVICE_FUNC_SUFFIX)) {
+			if (!funcName.endsWith(AccKernel.ACC_OPENCL_DEVICE_FUNC_SUFFIX)) {
 				// OpenCL don't need to output Host Function in .cl 
 				return;
 			}
@@ -57,7 +57,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 
 		case CUDA:
 		default:
-			if (funcName.endsWith(AccKernel.ACC_OpenCL_DEVICE_FUNC_SUFFIX)) {
+			if (funcName.endsWith(AccKernel.ACC_OPENCL_DEVICE_FUNC_SUFFIX)) {
 				return;
 			}
 

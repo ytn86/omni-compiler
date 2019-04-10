@@ -20,7 +20,7 @@ public class AccKernel {
 	private static final String ACC_REDUCTION_TMP_VAR = "_ACC_GPU_RED_TMP";
 	private static final String ACC_REDUCTION_CNT_VAR = "_ACC_GPU_RED_CNT";
 	public static final String ACC_GPU_DEVICE_FUNC_SUFFIX = "_DEVICE_GPU";
-	public static final String ACC_OpenCL_DEVICE_FUNC_SUFFIX = "_OpenCL_DEVICE";
+	public static final String ACC_OPENCL_DEVICE_FUNC_SUFFIX = "_OpenCL_DEVICE";
 	private static final String ACC_CL_KERNEL_LAUNCHER_NAME = "_ACC_launch";
 	private final Xobject _accThreadIndex = Xcons.Symbol(Xcode.VAR, Xtype.intType, "_ACC_thread_x_id");
 	private final Xobject _accBlockIndex = Xcons.Symbol(Xcode.VAR, Xtype.intType, "_ACC_block_x_id");
@@ -122,7 +122,7 @@ public class AccKernel {
 		String deviceKernelName = kernelMainName;
 		switch (this.platform) {
 		case OpenCL:
-			deviceKernelName += ACC_OpenCL_DEVICE_FUNC_SUFFIX;
+			deviceKernelName += ACC_OPENCL_DEVICE_FUNC_SUFFIX;
 			break;
 		case CUDA:
 		default:
