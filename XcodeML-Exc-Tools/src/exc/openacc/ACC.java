@@ -57,5 +57,6 @@ public class ACC {
   public enum Platform{
     CUDA,
     OpenCL,
+    OpenCL_IntelFPGA
   }
 }
