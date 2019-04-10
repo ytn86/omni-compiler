@@ -6,10 +6,12 @@ import java.util.*;
 
 class ACCgpuDecompileWriter extends PrintWriter {
 	private XobjectFile _env = null;
+	private ACC.Platform _platform = null;
 
-	public ACCgpuDecompileWriter(Writer out, XobjectFile env) {
+	public ACCgpuDecompileWriter(Writer out, XobjectFile env, ACC.Platform platform) {
 		super(out);
 		_env = env;
+		this._platform = platform;
 	}
   
 	public void printAll(){
@@ -35,7 +37,37 @@ class ACCgpuDecompileWriter extends PrintWriter {
   
 	void printFunc(XobjectDef def){
 		String funcName = def.getName();
-		boolean isDeviceFunc = funcName.endsWith(AccKernel.ACC_GPU_DEVICE_FUNC_SUFFIX);
+		
+		boolean isDeviceFunc = false;
+
+
+		switch (this._platform) {
+		case OpenCL:
+			
+			if (funcName.endsWith(AccKernel.ACC_GPU_DEVICE_FUNC_SUFFIX)) {
+				return;
+			}
+
+			if (!funcName.endsWith(AccKernel.ACC_OpenCL_DEVICE_FUNC_SUFFIX)) {
+				// OpenCL don't need to output Host Function in .cl 
+				return;
+			}
+			isDeviceFunc = true;
+			break;
+
+		case CUDA:
+		default:
+			if (funcName.endsWith(AccKernel.ACC_OpenCL_DEVICE_FUNC_SUFFIX)) {
+				return;
+			}
+
+			if (funcName.endsWith(AccKernel.ACC_GPU_DEVICE_FUNC_SUFFIX)) {
+				isDeviceFunc = true;
+			}
+			break;
+		}
+
+		
 		printWithIdentList(def.getDef(), _env.getGlobalIdentList(), isDeviceFunc, (Ident)def.getNameObj());
 	}
   
@@ -100,7 +132,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 					func_args = "(";
 					for (;  n != null;  a = a.nextArgs(), n = n.nextArgs()) {
 						arg_id = (Ident)n.getArg();
-						switch (ACC.platform){
+						switch (this._platform){
 						case OpenCL:
 							if(arg_id.Type().isPointer()) {
 								func_args += " __global ";
@@ -118,7 +150,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 					func_args += ")";
 				}
 				if (isDeviceFunc) {
-					switch (ACC.platform){
+					switch (this._platform){
 					case CUDA:
 						println("__global__ static");
 						break;
@@ -127,7 +159,9 @@ class ACCgpuDecompileWriter extends PrintWriter {
 						break;
 					}
 				} else {
-					println("extern \"C\"");
+					if (this._platform == ACC.Platform.CUDA) {
+						println("extern \"C\"");
+					}
 				}
 				printDeclType(id.Type().getRef(), funcName + func_args);
 			} else {
@@ -970,7 +1004,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 	private void printIdentDecl(Ident id) {
 		Object isShared = id.getProp(ACCgpuDecompiler.GPU_STRAGE_SHARED);
 		if(isShared != null){
-			switch(ACC.platform){
+			switch(this._platform){
 			case CUDA:
 				print("__shared__ ");
 				break;

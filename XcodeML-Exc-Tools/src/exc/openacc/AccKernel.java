@@ -19,7 +19,8 @@ public class AccKernel {
 	private static final String ACC_CACHE_VAR_PREFIX = "_ACC_cache_";
 	private static final String ACC_REDUCTION_TMP_VAR = "_ACC_GPU_RED_TMP";
 	private static final String ACC_REDUCTION_CNT_VAR = "_ACC_GPU_RED_CNT";
-	public static final String ACC_GPU_DEVICE_FUNC_SUFFIX = "_DEVICE";
+	public static final String ACC_GPU_DEVICE_FUNC_SUFFIX = "_DEVICE_GPU";
+	public static final String ACC_OpenCL_DEVICE_FUNC_SUFFIX = "_OpenCL_DEVICE";
 	private static final String ACC_CL_KERNEL_LAUNCHER_NAME = "_ACC_launch";
 	private final Xobject _accThreadIndex = Xcons.Symbol(Xcode.VAR, Xtype.intType, "_ACC_thread_x_id");
 	private final Xobject _accBlockIndex = Xcons.Symbol(Xcode.VAR, Xtype.intType, "_ACC_block_x_id");
@@ -38,6 +39,8 @@ public class AccKernel {
 	private final List<XobjList> allocList = new ArrayList<XobjList>(); //for private array or reduction tmp array
 	private List<ACCvar> _outerVarList;
 	private boolean hasGangSync = false;
+	public static ACC.Platform platform;
+	
 
 	public AccKernel(ACCglobalDecl decl, PragmaBlock pb, AccInformation info, List<Block> kernelBlocks) {
 		this._decl = decl;
@@ -45,6 +48,27 @@ public class AccKernel {
 		this._kernelInfo = info;
 		this._kernelBlocks = kernelBlocks;
 		this.gpuManager = new AccManager(_kernelInfo, _pb);
+
+        if (this._kernelInfo.hasClause(ACCpragma.DEVICE_TYPE)) {
+
+
+			System.out.println(this._kernelInfo.findClause(ACCpragma.DEVICE_TYPE).toXobject());
+			System.out.println(this.platform);
+
+			switch(this._kernelInfo.findClause(ACCpragma.DEVICE_TYPE).toXobject().getArg(1).getString()) {
+			case "OpenCL":
+				this.platform = ACC.Platform.OpenCL;
+				break;
+			case "CUDA":
+			default:
+				this.platform = ACC.Platform.CUDA;
+				break;
+
+			}
+		} else {
+			this.platform = ACC.Platform.CUDA;
+
+		}
 	}
 
 	private XobjList getFuncInfo(Block block) {
@@ -83,19 +107,28 @@ public class AccKernel {
 		int lineNo = kernelBody.get(0).getLineNo().lineNo();
 		String kernelMainName = ACC_FUNC_PREFIX + funcName + "_L" + lineNo;
 		String launchFuncName = "";
-		switch (ACC.platform){
+		switch (this.platform){
 		case CUDA:
 			launchFuncName = kernelMainName;
 			break;
 		case OpenCL:
 			launchFuncName = kernelMainName;
 			break;
-		}
+		};
 
 		collectOuterVar();
 
 		//make deviceKernelDef
-		String deviceKernelName = kernelMainName + ACC_GPU_DEVICE_FUNC_SUFFIX;
+		String deviceKernelName = kernelMainName;
+		switch (this.platform) {
+		case OpenCL:
+			deviceKernelName += ACC_OpenCL_DEVICE_FUNC_SUFFIX;
+			break;
+		case CUDA:
+		default:
+			deviceKernelName += ACC_GPU_DEVICE_FUNC_SUFFIX;
+			break;
+		}
 		XobjectDef deviceKernelDef = makeDeviceKernelDef(deviceKernelName, _outerIdList, kernelBody);
 
 		//add deviceKernel and launchFunction
@@ -131,6 +164,7 @@ public class AccKernel {
 
 			Ident launchFuncId = ACCutil.getMacroFuncId(launchFuncName, Xtype.voidType);
 			int kernelNum = _decl.declKernel(kernelFuncName);
+			_decl.declKernelDeviceType(this.platform);
 			Ident programId = _decl.getProgramId();
 			int numArgs = kernelFuncArgs.Nargs();
 
@@ -157,6 +191,7 @@ public class AccKernel {
 				Xobject maxSmSize = sharedMemory.getMaxSize();
 				deviceKernelCall.setProp(ACCgpuDecompiler.GPU_FUNC_CONF_SHAREDMEMORY, maxSmSize);
 			}
+            _decl.declKernelDeviceType(this.platform);
 			return Bcons.Statement(deviceKernelCall);
 		}
 
@@ -1002,7 +1037,7 @@ public class AccKernel {
 		}
 
 		Block kernelLauchBlock = Bcons.emptyBlock();
-		switch (ACC.platform) {
+		switch (this.platform) {
 		case CUDA:
 			kernelLauchBlock = makeLauncherFuncCallCUDA(launchFuncName, deviceKernelDef, deviceKernelCallArgs, num_gangs.Ref(), num_workers.Ref(), vec_len.Ref(), getAsyncExpr());
 			break;
@@ -1025,7 +1060,7 @@ public class AccKernel {
 
 			Block reductionKernelCallBlock = Bcons.emptyBlock();
 
-			switch (ACC.platform) {
+			switch (this.platform) {
 			case CUDA:
 				reductionKernelCallBlock = makeLauncherFuncCallCUDA(launchFuncName + "_red", reductionKernelDef, reductionKernelCallArgs,
 																	Xcons.IntConstant(reductionKernelVarCount),
@@ -2160,7 +2195,7 @@ public class AccKernel {
 		}
 
 		public Block makeInKernelReductionFuncCall(Ident dstId){
-			switch(ACC.platform){
+			switch(platform){
 			case CUDA:
 			case OpenCL:
 				return makeInKernelReductionFuncCall_CUDA(dstId);

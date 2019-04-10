@@ -23,6 +23,7 @@ class ACCglobalDecl{
   private XobjectFile _env_device;
   private Map<Ident, ACCvar> globalVarMap = new HashMap<Ident, ACCvar>();
   private List<String> _kernelNames = new ArrayList<String>();
+  private List<ACC.Platform> _kernelDeviceTypes = new ArrayList<ACC.Platform>();
   private Ident _programId = null;
 
   
@@ -38,15 +39,19 @@ class ACCglobalDecl{
     _env_device = new XobjectFile();
     _env_device.setIdentList(Xcons.IDList());//_env.getGlobalIdentList().copy());
   }
-  
+
   public XobjectFile getEnv() {
     return _env;
   }
-  
+
   public XobjectFile getEnvDevice(){
     return _env_device;
   }
 
+  public List<ACC.Platform> getKernelDeviceTypeList() {
+    return this._kernelDeviceTypes;
+  }
+	
   public void setupGlobalConstructor() {
     Ident argv = Ident.Param("argv", Xtype.Pointer(Xtype.Pointer(Xtype.charType)));   // create "int argc" & "char **argv"
     Ident argc = Ident.Param("argc", Xtype.intType);
@@ -256,6 +261,13 @@ class ACCglobalDecl{
     }
 
     _kernelNames.add(kernelName);
+
+    return size;
+  }
+
+  int declKernelDeviceType(ACC.Platform platform) {
+    int size = _kernelDeviceTypes.size();
+	this._kernelDeviceTypes.add(platform);
 
     return size;
   }

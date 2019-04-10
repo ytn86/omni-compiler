@@ -218,6 +218,7 @@ class AccInformation {
     case GANG:
     case WORKER:
     case VECTOR:
+    case DEVICE_TYPE:
     case WAIT: //it will be int expr list
     case ASYNC: //it will be int expr list
       if(arg == null){

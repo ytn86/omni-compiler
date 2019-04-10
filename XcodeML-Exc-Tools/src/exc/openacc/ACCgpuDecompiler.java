@@ -36,61 +36,67 @@ class ACCgpuDecompiler {
     for(Xtype type : envDevice.getTypeList()){
       if(type.isStruct() || type.isEnum() || type.isUnion()){
         Ident id = findIdent(hostGlobalIdentList, type);
-	if(id != null){
-	  deviceGlobalIdList.cons(id);
-	  type.setTagIdent(id);
-	}
+        if(id != null){
+          deviceGlobalIdList.cons(id);
+          type.setTagIdent(id);
+	    }
       }
     }
 
-    try{
-      String filename = ACCutil.removeExtension(env.getSourceFileName());
-      switch(ACC.platform){
-        case CUDA:
-          filename += CUDA_SRC_EXTENSION;
-          break;
-        case OpenCL:
-          filename += OPENCL_SRC_EXTENSION;
-          break;
-        default:
-          ACC.fatal("unknown platform");
-      }
-      envDevice.setProgramAttributes(filename, "CUDA", "", "", "");
-      Writer w = new BufferedWriter(new FileWriter(filename), BUFFER_SIZE);
-      ACCgpuDecompileWriter writer = new ACCgpuDecompileWriter(w, envDevice);
 
-      List<String> includeLines = new ArrayList<String>();
+	for (ACC.Platform platform: decl.getKernelDeviceTypeList()) {
+	  
+		try{
+			String baseFilename = ACCutil.removeExtension(env.getSourceFileName());
+			String filename = "";
+			switch(platform){
+			case CUDA:
+				filename = baseFilename +  CUDA_SRC_EXTENSION;
+				break;
+			case OpenCL:
+				filename = baseFilename +  OPENCL_SRC_EXTENSION;
+				break;
+			default:
+				ACC.fatal("unknown platform");
+			}
 
-      switch(ACC.platform){
-        case CUDA:
-          includeLines.add("#include \"acc.h\"");
-          includeLines.add("#include \"acc_gpu_func.hpp\"");
-          break;
-        case OpenCL:
-	    //          includeLines.add("#include \"acc.h\"");
-          includeLines.add("#include \"acc_cl.h\"");
-          break;
-        default:
-          ACC.fatal("unknown platform");
-      }
+			envDevice.setProgramAttributes(filename, "CUDA", "", "", "");
+			Writer w = new BufferedWriter(new FileWriter(filename), BUFFER_SIZE);
+			ACCgpuDecompileWriter writer = new ACCgpuDecompileWriter(w, envDevice, platform);
 
-      if(XmOption.isXcalableMP()){
-        includeLines.add("#include \"xmp_index_macro.h\"");
-      }
+			List<String> includeLines = new ArrayList<String>();
+			
+			switch(platform){
+			case CUDA:
+				includeLines.add("#include \"acc.h\"");
+				includeLines.add("#include \"acc_gpu_func.hpp\"");
+				break;
+			case OpenCL:
+				//          includeLines.add("#include \"acc.h\"");
+				includeLines.add("#include \"acc_cl.h\"");
+				break;
+			default:
+				ACC.fatal("unknown platform");
+			}
 
-      for(String includeLine : includeLines){
-        writer.println(includeLine);
-      }
+			if(XmOption.isXcalableMP()){
+				includeLines.add("#include \"xmp_index_macro.h\"");
+			}
 
-      writer.println();
+			for(String includeLine : includeLines){
+				writer.println(includeLine);
+			}
 
-      writer.printAll();
+			writer.println();
+
+			writer.printAll();
       
-      writer.flush();
-      writer.close();
-    }catch (IOException e){
-      ACC.fatal("error in gpu decompiler: " + e.getMessage());
-    }
+			writer.flush();
+			writer.close();
+		}catch (IOException e){
+			ACC.fatal("error in gpu decompiler: " + e.getMessage());
+		}
+	}
   }
 
   private Ident findIdent(XobjList idList, Xtype type){
