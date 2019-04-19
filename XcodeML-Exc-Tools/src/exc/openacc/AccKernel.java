@@ -21,6 +21,7 @@ public class AccKernel {
 	private static final String ACC_REDUCTION_CNT_VAR = "_ACC_GPU_RED_CNT";
 	public static final String ACC_GPU_DEVICE_FUNC_SUFFIX = "_DEVICE_GPU";
 	public static final String ACC_OPENCL_DEVICE_FUNC_SUFFIX = "_OpenCL_DEVICE";
+	public static final String ACC_OPENCL_INTELFPGA_DEVICE_FUNC_SUFFIX = "_OpenCL_INTELFPGA_DEVICE";
 	private static final String ACC_CL_KERNEL_LAUNCHER_NAME = "_ACC_launch";
 	private final Xobject _accThreadIndex = Xcons.Symbol(Xcode.VAR, Xtype.intType, "_ACC_thread_x_id");
 	private final Xobject _accBlockIndex = Xcons.Symbol(Xcode.VAR, Xtype.intType, "_ACC_block_x_id");
@@ -51,13 +52,12 @@ public class AccKernel {
 
         if (this._kernelInfo.hasClause(ACCpragma.DEVICE_TYPE)) {
 
-
-			System.out.println(this._kernelInfo.findClause(ACCpragma.DEVICE_TYPE).toXobject());
-			System.out.println(this.platform);
-
 			switch(this._kernelInfo.findClause(ACCpragma.DEVICE_TYPE).toXobject().getArg(1).getString()) {
 			case "OpenCL":
 				this.platform = ACC.Platform.OpenCL;
+				break;
+			case "OpenCL_IntelFPGA":
+				this.platform = ACC.Platform.OpenCL_IntelFPGA;
 				break;
 			case "CUDA":
 			default:
@@ -112,6 +112,7 @@ public class AccKernel {
 			launchFuncName = kernelMainName;
 			break;
 		case OpenCL:
+		case OpenCL_IntelFPGA:
 			launchFuncName = kernelMainName;
 			break;
 		};
@@ -123,6 +124,9 @@ public class AccKernel {
 		switch (this.platform) {
 		case OpenCL:
 			deviceKernelName += ACC_OPENCL_DEVICE_FUNC_SUFFIX;
+			break;
+		case OpenCL_IntelFPGA:
+			deviceKernelName += ACC_OPENCL_INTELFPGA_DEVICE_FUNC_SUFFIX;
 			break;
 		case CUDA:
 		default:
@@ -514,7 +518,9 @@ public class AccKernel {
 		Xobject decls = body.getDecls();
 		Block varInitSection = null;
 		Set<ACCpragma> outerParallelisms = AccLoop.getOuterParallelism(body.getParent());
-		if (this._kernelInfo.getPragma() == ACCpragma.KERNELS_LOOP && !outerParallelisms.contains(ACCpragma.VECTOR)) {
+
+
+		if (this._kernelInfo.getPragma() == ACCpragma.KERNELS_LOOP && !outerParallelisms.contains(ACCpragma.VECTOR) && this.platform != ACC.Platform.OpenCL_IntelFPGA ) {
 			if (ids != null) {
 				for (Xobject x : (XobjList) ids) {
 					Ident id = (Ident) x;
@@ -605,7 +611,7 @@ public class AccKernel {
 
 		String execMethodName = gpuManager.getMethodName(forBlock);
 		EnumSet<ACCpragma> execMethodSet = gpuManager.getMethodType(forBlock);
-		if (execMethodSet.isEmpty() || execMethodSet.contains(ACCpragma.SEQ)) { //if execMethod is not defined or seq
+		if (execMethodSet.isEmpty() || execMethodSet.contains(ACCpragma.SEQ) || this.platform==ACC.Platform.OpenCL_IntelFPGA) { //if execMethod is not defined or seq
 			return makeSequentialLoop(forBlock, deviceKernelBuildInfo, info);
 //      loopStack.push(new Loop(forBlock));
 //      BlockList body = Bcons.blockList(makeCoreBlock(forBlock.getBody(), deviceKernelBuildInfo, prevExecMethodName));
@@ -722,6 +728,14 @@ public class AccKernel {
 			Block calcNiterFuncCall = ACCutil.createFuncCallBlock("_ACC_calc_niter", Xcons.List(nIterId.getAddr(), init, cond, step));
 			Block calcIdxFuncCall = ACCutil.createFuncCallBlock(ACC_CALC_IDX_FUNC, Xcons.List(vIdxId.Ref(), indVarId.getAddr(), init, cond, step));
 
+			switch (this.platform) {
+			case OpenCL_IntelFPGA:
+				break;
+			case CUDA:
+			case OpenCL:
+				break;
+			}
+			
 			resultBlockBuilder.addInitBlock(calcNiterFuncCall);
 
 			vIdxIdList.add(vIdxId);
@@ -736,9 +750,10 @@ public class AccKernel {
 		Ident iterInit = resultBlockBuilder.declLocalIdent("_ACC_" + execMethodName + "_init", globalIdxType);
 		Ident iterCond = resultBlockBuilder.declLocalIdent("_ACC_" + execMethodName + "_cond", globalIdxType);
 		Ident iterStep = resultBlockBuilder.declLocalIdent("_ACC_" + execMethodName + "_step", globalIdxType);
-
+		
 		XobjList initIterFuncArgs = Xcons.List(iterInit.getAddr(), iterCond.getAddr(), iterStep.getAddr());
 		Xobject nIterAll = Xcons.IntConstant(1);
+		
 		for (Xobject x : nIterIdList) {
 			Ident nIterId = (Ident) x;
 			nIterAll = Xcons.binaryOp(Xcode.MUL_EXPR, nIterAll, nIterId.Ref());
@@ -746,17 +761,20 @@ public class AccKernel {
 		initIterFuncArgs.add(nIterAll);
 
 		Block initIterFunc = ACCutil.createFuncCallBlock(ACC_INIT_ITER_FUNC_PREFIX + execMethodName, initIterFuncArgs);
+
 		resultBlockBuilder.addInitBlock(initIterFunc);
+		
 
 
 		//make clac each idx from virtual idx
 		Block calcEachVidxBlock = makeCalcIdxFuncCall(vIdxIdList, nIterIdList, iterIdx);
-
+		
 
 		//push Loop to stack
-		Loop thisLoop = new Loop(forBlock, iterIdx, iterInit, iterCond, iterStep);
+		Loop thisLoop = null;
+		thisLoop = new Loop(forBlock, iterIdx, iterInit, iterCond, iterStep);
 		loopStack.push(thisLoop);
-
+		
 		List<Cache> cacheList = new ArrayList<Cache>();
 
 		if (false) {
@@ -806,15 +824,28 @@ public class AccKernel {
 			red.rewrite(parallelLoopBlock);
 		}
 
-
 		//make resultBody
 		resultBlockBuilder.add(parallelLoopBlock);
 
 		if (execMethodSet.contains(ACCpragma.VECTOR)) {
-			resultBlockBuilder.addFinalizeBlock(Bcons.Statement(_accSyncThreads));
+			switch(this.platform) {
+			case CUDA:
+			case OpenCL:
+				resultBlockBuilder.addFinalizeBlock(Bcons.Statement(_accSyncThreads));
+				break;
+			case OpenCL_IntelFPGA:
+				break;
+			}
 		}
 		if (hasGangSync && execMethodSet.contains(ACCpragma.GANG)){
-			resultBlockBuilder.addFinalizeBlock(Bcons.Statement(_accSyncGangs));
+			switch(this.platform) {
+			case CUDA:
+			case OpenCL:
+				resultBlockBuilder.addFinalizeBlock(Bcons.Statement(_accSyncGangs));
+				break;
+			case OpenCL_IntelFPGA:
+				break;
+			}
 		}
 
 		//pop stack
@@ -917,6 +948,12 @@ public class AccKernel {
 		return Bcons.COMPOUND(resultBody);
 	}
 
+	//private Block makeAssignBlock(Ident asignedTo, Ident assignedFrom) {
+	private void makeAssignBlock(Ident left, Ident assignedFrom) {
+		//Block assignBlock = Bcons.Statement();
+		Xobject result  = left.Ref();
+		
+	}
 
 	private Block makeCalcIdxFuncCall(XobjList vidxIdList, XobjList nIterIdList, Ident vIdx) {
 		int i;
@@ -1042,6 +1079,7 @@ public class AccKernel {
 			kernelLauchBlock = makeLauncherFuncCallCUDA(launchFuncName, deviceKernelDef, deviceKernelCallArgs, num_gangs.Ref(), num_workers.Ref(), vec_len.Ref(), getAsyncExpr());
 			break;
 		case OpenCL:
+		case OpenCL_IntelFPGA:
 			String kernelName = deviceKernelDef.getName();
 			Ident kernelConf =blockListBuilder.declLocalIdent("_ACC_conf", Xtype.Array(Xtype.intType, null), Xcons.List(num_gangs.Ref(), num_workers.Ref(), vec_len.Ref()));
 			kernelLauchBlock = makeKernelLaunchBlock(ACC_CL_KERNEL_LAUNCHER_NAME, kernelName, deviceKernelCallArgs, kernelConf, getAsyncExpr());
@@ -1069,6 +1107,7 @@ public class AccKernel {
 																	getAsyncExpr());
 				break;
 			case OpenCL:
+			case OpenCL_IntelFPGA:
 				BlockList body = Bcons.emptyBody();
 				String kernelName = reductionKernelDef.getName();
 				Ident kernelConf = body.declLocalIdent("_ACC_conf", Xtype.Array(Xtype.intType, null), StorageClass.AUTO, Xcons.List(num_gangs.Ref(), num_workers.Ref(), vec_len.Ref()));
@@ -2198,6 +2237,7 @@ public class AccKernel {
 			switch(platform){
 			case CUDA:
 			case OpenCL:
+			case OpenCL_IntelFPGA:
 				return makeInKernelReductionFuncCall_CUDA(dstId);
 			}
 			return null;

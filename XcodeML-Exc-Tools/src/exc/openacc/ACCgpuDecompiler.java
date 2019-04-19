@@ -55,6 +55,9 @@ class ACCgpuDecompiler {
 				break;
 			case OpenCL:
 				filename = baseFilename +  OPENCL_SRC_EXTENSION;
+				break;				
+			case OpenCL_IntelFPGA:
+				filename = baseFilename + "_intelfpga_" + OPENCL_SRC_EXTENSION;
 				break;
 			default:
 				ACC.fatal("unknown platform");
@@ -72,6 +75,7 @@ class ACCgpuDecompiler {
 				includeLines.add("#include \"acc_gpu_func.hpp\"");
 				break;
 			case OpenCL:
+			case OpenCL_IntelFPGA:
 				//          includeLines.add("#include \"acc.h\"");
 				includeLines.add("#include \"acc_cl.h\"");
 				break;

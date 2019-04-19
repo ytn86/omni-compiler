@@ -43,8 +43,12 @@ class ACCgpuDecompileWriter extends PrintWriter {
 
 		switch (this._platform) {
 		case OpenCL:
-			
+
 			if (funcName.endsWith(AccKernel.ACC_GPU_DEVICE_FUNC_SUFFIX)) {
+				return;
+			}
+
+			if (funcName.endsWith(AccKernel.ACC_OPENCL_INTELFPGA_DEVICE_FUNC_SUFFIX)) {
 				return;
 			}
 
@@ -55,15 +59,38 @@ class ACCgpuDecompileWriter extends PrintWriter {
 			isDeviceFunc = true;
 			break;
 
+		case OpenCL_IntelFPGA:
+
+			if (funcName.endsWith(AccKernel.ACC_GPU_DEVICE_FUNC_SUFFIX)) {
+				return;
+			}
+
+			if (funcName.endsWith(AccKernel.ACC_OPENCL_DEVICE_FUNC_SUFFIX)) {
+				return;
+			}
+
+			if (!funcName.endsWith(AccKernel.ACC_OPENCL_INTELFPGA_DEVICE_FUNC_SUFFIX)) {
+				// OpenCL don't need to output Host Function in .cl 
+				return;
+			}
+			isDeviceFunc = true;
+			break;
+
+
 		case CUDA:
 		default:
 			if (funcName.endsWith(AccKernel.ACC_OPENCL_DEVICE_FUNC_SUFFIX)) {
 				return;
 			}
 
+			if (funcName.endsWith(AccKernel.ACC_OPENCL_INTELFPGA_DEVICE_FUNC_SUFFIX)) {
+				return;
+			}
+
 			if (funcName.endsWith(AccKernel.ACC_GPU_DEVICE_FUNC_SUFFIX)) {
 				isDeviceFunc = true;
 			}
+
 			break;
 		}
 
@@ -134,6 +161,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 						arg_id = (Ident)n.getArg();
 						switch (this._platform){
 						case OpenCL:
+						case OpenCL_IntelFPGA:
 							if(arg_id.Type().isPointer()) {
 								func_args += " __global ";
 							}
@@ -155,6 +183,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 						println("__global__ static");
 						break;
 					case OpenCL:
+					case OpenCL_IntelFPGA:
 						println("__kernel");
 						break;
 					}
@@ -1009,6 +1038,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 				print("__shared__ ");
 				break;
 			case OpenCL:
+			case OpenCL_IntelFPGA:
 				//print("__local ");
 				break;
 			}
@@ -1057,7 +1087,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 		if (id_list == null) {
 			return;
 		}
-
+		
 		printStructTAGNAME(id_list);
 	}
 
@@ -1198,6 +1228,7 @@ class ACCgpuDecompileWriter extends PrintWriter {
 		case VAR_DECL:
         {
 			Xobject s = v.getArg(0);
+
 			if ((id = findIdent(id_list,s)) == null &&
 				(id = findIdent(_env.getGlobalIdentList(), s)) == null) {
 				fatal("Variable id is not found, "+s);
